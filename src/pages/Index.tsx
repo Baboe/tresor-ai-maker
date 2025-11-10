@@ -1,103 +1,125 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Sparkles, TrendingUp, FileText, Image, Database, Mail, Calendar } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles, Calendar, TrendingUp, Package } from "lucide-react";
 import WorkflowSteps from "@/components/WorkflowSteps";
 import ProductCard from "@/components/ProductCard";
+import { ProductGenerator } from "@/components/ProductGenerator";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(6);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    // TODO: Implement product generation workflow
-    setTimeout(() => setIsGenerating(false), 3000);
+  const stats = {
+    trending: 12,
+    created: products.length,
+    ready: products.filter(p => p.status === 'ready').length
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-cream">
-      {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 text-center">
-        <div className="flex items-center justify-center mb-6 gap-2">
-          <Sparkles className="w-10 h-10 text-primary animate-pulse" />
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-rose-dark via-primary to-rose bg-clip-text text-transparent">
-            TrésorAI
-          </h1>
-        </div>
-        <p className="text-xl md:text-2xl text-muted-foreground mb-4 max-w-2xl mx-auto">
-          Your elegant AI assistant for daily digital product creation
-        </p>
-        <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto">
-          Each morning, discover trending topics, create beautiful digital products, and get ready-to-upload packs for your Stan Store ✨
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-          <Button 
-            size="lg" 
-            className="bg-gradient-to-r from-primary to-rose-dark hover:opacity-90 transition-opacity shadow-soft hover:shadow-hover text-lg px-8"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-          >
-            <Sparkles className="mr-2 w-5 h-5" />
-            {isGenerating ? "Creating Magic..." : "Generate Product Now"}
-          </Button>
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="border-2 border-primary text-primary hover:bg-rose-light/20 text-lg px-8"
-          >
-            <Calendar className="mr-2 w-5 h-5" />
-            Schedule Daily
-          </Button>
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center mb-6">
+            <Sparkles className="w-10 h-10 text-primary animate-pulse mr-3" />
+            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-rose-dark via-primary to-rose bg-clip-text text-transparent">
+              TrésorAI
+            </h1>
+          </div>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Your elegant AI assistant creating ready-to-sell digital products daily ✨
+          </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-16">
-          {[
-            { icon: TrendingUp, label: "Trending Topics", value: "Daily" },
-            { icon: FileText, label: "Products Created", value: "0" },
-            { icon: Database, label: "Ready to Upload", value: "0" },
-          ].map((stat, i) => (
-            <Card key={i} className="p-6 shadow-card hover:shadow-soft transition-shadow bg-gradient-to-br from-card to-cream border-border">
-              <stat.icon className="w-8 h-8 text-primary mx-auto mb-3" />
-              <p className="text-3xl font-bold text-foreground mb-1">{stat.value}</p>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-            </Card>
-          ))}
+        <div className="grid gap-6 md:grid-cols-3 mb-12">
+          <Card className="bg-card/50 backdrop-blur border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Trending Topics</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.trending}</div>
+              <p className="text-xs text-muted-foreground">Discovered this week</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50 backdrop-blur border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Products Created</CardTitle>
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.created}</div>
+              <p className="text-xs text-muted-foreground">Total generated</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50 backdrop-blur border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ready to Upload</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.ready}</div>
+              <p className="text-xs text-muted-foreground">Awaiting Stan Store</p>
+            </CardContent>
+          </Card>
         </div>
+
+        <ProductGenerator />
       </section>
 
-      {/* Workflow Steps */}
       <section className="container mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-center mb-4 text-foreground">
-          Your Automated Workflow
-        </h2>
+        <h2 className="text-3xl font-bold text-center mb-4">Your Automated Workflow</h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
           TrésorAI handles everything from trend discovery to final delivery
         </p>
         <WorkflowSteps />
       </section>
 
-      {/* Recent Products Section */}
       <section className="container mx-auto px-4 py-12">
-        <h2 className="text-3xl font-bold text-center mb-4 text-foreground">
-          Recent Creations
-        </h2>
-        <p className="text-center text-muted-foreground mb-8">
-          Your AI-generated digital products
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* Placeholder for products */}
-          <Card className="p-8 text-center shadow-card bg-gradient-to-br from-card to-cream border-dashed border-2 border-border">
-            <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">No products yet</p>
-            <p className="text-sm text-muted-foreground mt-2">Click "Generate Product Now" to start</p>
-          </Card>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Recent Creations</h2>
+          <Package className="h-5 w-5 text-muted-foreground" />
         </div>
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Loading products...
+          </div>
+        ) : products.length === 0 ? (
+          <Card className="bg-card/50 backdrop-blur border-border/50 border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Package className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-2">No products yet</p>
+              <p className="text-sm text-muted-foreground">Generate your first product above!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => (
+              <ProductCard 
+                key={product.id}
+                title={product.title}
+                description={product.description}
+                price={product.price_range}
+                image={product.cover_image_url || "https://images.unsplash.com/photo-1455849318743-b2233052fcff?w=400"}
+                status={product.status}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* Footer */}
       <footer className="container mx-auto px-4 py-8 text-center border-t border-border mt-16">
         <p className="text-muted-foreground">
           Your AI assistant, <span className="text-primary font-semibold">TrésorAI</span> ✨
