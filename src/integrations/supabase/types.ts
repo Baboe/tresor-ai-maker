@@ -14,7 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          benefits: string[]
+          cover_image_url: string | null
+          created_at: string
+          description: string
+          hashtags: string[]
+          id: string
+          pdf_url: string | null
+          price_range: string
+          social_caption: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          benefits?: string[]
+          cover_image_url?: string | null
+          created_at?: string
+          description: string
+          hashtags?: string[]
+          id?: string
+          pdf_url?: string | null
+          price_range: string
+          social_caption: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          benefits?: string[]
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string
+          hashtags?: string[]
+          id?: string
+          pdf_url?: string | null
+          price_range?: string
+          social_caption?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      trending_topics: {
+        Row: {
+          created_at: string
+          explanation: string
+          id: string
+          relevance_score: number
+          topic: string
+        }
+        Insert: {
+          created_at?: string
+          explanation: string
+          id?: string
+          relevance_score?: number
+          topic: string
+        }
+        Update: {
+          created_at?: string
+          explanation?: string
+          id?: string
+          relevance_score?: number
+          topic?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
