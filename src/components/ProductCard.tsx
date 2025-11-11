@@ -13,7 +13,7 @@ interface ProductCardProps {
   price: string;
   image: string;
   status?: string;
-  benefits?: string[];
+  benefits?: string[] | null;
   social_caption?: string;
 }
 
@@ -30,17 +30,31 @@ const ProductCard = ({
   const { toast } = useToast();
 
   const handleGeneratePDF = async () => {
+    const normalizedBenefits = Array.isArray(benefits)
+      ? benefits.filter((benefit): benefit is string => typeof benefit === 'string' && benefit.trim().length > 0)
+      : [];
+
+    const safeTitle = typeof title === 'string' && title.trim().length > 0 ? title.trim() : 'Untitled Product';
+    const safeDescription = typeof description === 'string' ? description : '';
+    const safePrice = typeof price === 'string' ? price : '';
+    const safeSocialCaption = typeof social_caption === 'string' ? social_caption : undefined;
+
+    const slugBase = safeTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const fileName = `${slugBase || 'untitled-product'}-workbook.pdf`;
+
     setIsGenerating(true);
     try {
       const pdfBytes = await generateWorkbookPDF({
-        title,
-        description,
-        benefits,
-        price_range: price,
-        social_caption,
+        title: safeTitle,
+        description: safeDescription,
+        benefits: normalizedBenefits,
+        price_range: safePrice,
+        social_caption: safeSocialCaption,
       });
 
-      const fileName = `${title.toLowerCase().replace(/\s+/g, '-')}-workbook.pdf`;
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
       
       const { error } = await supabase.storage
