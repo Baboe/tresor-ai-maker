@@ -18,13 +18,21 @@ interface ProductData {
 
 // Remove emojis and non-WinAnsi characters
 function sanitizeText(text: string): string {
-  // Remove emojis and characters outside basic Latin range
-  return text.replace(/[^\x00-\xFF]/g, '').replace(/[\u0080-\u00FF]/g, (char) => {
-    // Keep common characters, remove others
-    const code = char.charCodeAt(0);
-    if (code >= 0x80 && code <= 0x9F) return ''; // Control characters
-    return char;
-  });
+  // First, replace common Unicode characters with ASCII equivalents
+  let sanitized = text
+    .replace(/[\u2018\u2019]/g, "'") // Smart single quotes
+    .replace(/[\u201C\u201D]/g, '"') // Smart double quotes
+    .replace(/\u2013/g, '-') // En dash
+    .replace(/\u2014/g, '--') // Em dash
+    .replace(/\u2026/g, '...') // Ellipsis
+    .replace(/\u2022/g, '*') // Bullet point
+    .replace(/[\n\r]+/g, ' ') // Replace new lines with spaces
+    .replace(/\s+/g, ' '); // Collapse multiple spaces
+
+  // Then, remove any remaining non-ASCII characters
+  sanitized = sanitized.replace(/[^\x20-\x7E]/g, '');
+
+  return sanitized.trim();
 }
 
 export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Array> {
@@ -153,7 +161,7 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
   yPosition -= 35;
   sanitizedProduct.benefits.forEach(benefit => {
-    const benefitLines = wrapText(`• ${benefit}`, contentWidth - 20, 13, timesRoman);
+    const benefitLines = wrapText(`* ${benefit}`, contentWidth - 20, 13, timesRoman);
     benefitLines.forEach(line => {
       introPage.drawText(line, {
         x: margin + 10,
