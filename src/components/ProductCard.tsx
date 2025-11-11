@@ -44,7 +44,6 @@ const ProductCard = ({
         social_caption,
       });
 
-      const fileName = `${title.toLowerCase().replace(/\s+/g, '-')}-workbook.pdf`;
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
       
       const { error } = await supabase.storage
