@@ -34,25 +34,14 @@ const ProductCard = ({
       ? benefits.filter((benefit): benefit is string => typeof benefit === 'string' && benefit.trim().length > 0)
       : [];
 
-    const safeTitle = typeof title === 'string' && title.trim().length > 0 ? title.trim() : 'Untitled Product';
-    const safeDescription = typeof description === 'string' ? description : '';
-    const safePrice = typeof price === 'string' ? price : '';
-    const safeSocialCaption = typeof social_caption === 'string' ? social_caption : undefined;
-
-    const slugBase = safeTitle
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    const fileName = `${slugBase || 'untitled-product'}-workbook.pdf`;
-
     setIsGenerating(true);
     try {
       const pdfBytes = await generateWorkbookPDF({
-        title: safeTitle,
-        description: safeDescription,
+        title,
+        description,
         benefits: normalizedBenefits,
-        price_range: safePrice,
-        social_caption: safeSocialCaption,
+        price_range: price,
+        social_caption,
       });
 
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
