@@ -1,4 +1,5 @@
 import { PDFDocument, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 const COLORS = {
   beige: rgb(0.96, 0.93, 0.88),
@@ -18,6 +19,7 @@ interface ProductData {
 
 export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
 
   // Load Unicode font (Noto Sans)
   const fontBytes = await fetch('/fonts/NotoSans-Regular.ttf').then(res => res.arrayBuffer());
