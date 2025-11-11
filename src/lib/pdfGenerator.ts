@@ -16,19 +16,32 @@ interface ProductData {
   social_caption?: string | null;
 }
 
-// Remove emojis and non-WinAnsi characters
+// Replace characters that cannot be encoded with WinAnsi (used by the bundled PDF fonts)
 function sanitizeText(text: string | null | undefined): string {
   if (typeof text !== 'string') {
     return '';
   }
 
-  // Remove emojis and characters outside basic Latin range
-  return text.replace(/[^\x00-\xFF]/g, '').replace(/[\u0080-\u00FF]/g, (char) => {
-    // Keep common characters, remove others
-    const code = char.charCodeAt(0);
-    if (code >= 0x80 && code <= 0x9F) return ''; // Control characters
-    return char;
-  });
+  // Normalize diacritics (e.g. é -> e) before removing characters outside the WinAnsi range
+  const withoutDiacritics = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+
+  // Replace known punctuation that PDF-Lib cannot encode with simpler ASCII alternatives
+  const replacements: Record<string, string> = {
+    '’': "'",
+    '‘': "'",
+    '“': '"',
+    '”': '"',
+    '–': '-',
+    '—': '-',
+    '•': '-',
+  };
+
+  const replacedText = withoutDiacritics.replace(/[’‘“”–—•]/g, (char) => replacements[char] ?? '');
+
+  // Remove remaining characters outside the WinAnsi range and strip control characters (except newline/tab)
+  return replacedText
+    .replace(/[^\x00-\x7F]/g, '')
+    .replace(/[\u0000-\u001F\u007F]/g, (char) => (['\n', '\r', '\t'].includes(char) ? char : ''));
 }
 
 export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Array> {
