@@ -9,15 +9,19 @@ const COLORS = {
 };
 
 interface ProductData {
-  title: string;
-  description: string;
-  benefits: string[];
-  price_range: string;
-  social_caption?: string;
+  title?: string | null;
+  description?: string | null;
+  benefits?: (string | null | undefined)[] | null;
+  price_range?: string | null;
+  social_caption?: string | null;
 }
 
 // Remove emojis and non-WinAnsi characters
-function sanitizeText(text: string): string {
+function sanitizeText(text: string | null | undefined): string {
+  if (typeof text !== 'string') {
+    return '';
+  }
+
   // Remove emojis and characters outside basic Latin range
   return text.replace(/[^\x00-\xFF]/g, '').replace(/[\u0080-\u00FF]/g, (char) => {
     // Keep common characters, remove others
@@ -28,11 +32,17 @@ function sanitizeText(text: string): string {
 }
 
 export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Array> {
+  const sanitizedBenefits = Array.isArray(product.benefits)
+    ? product.benefits
+        .filter((benefit): benefit is string => typeof benefit === 'string' && benefit.trim().length > 0)
+        .map((benefit) => sanitizeText(benefit))
+    : [];
+
   // Sanitize all product data
   const sanitizedProduct = {
-    title: sanitizeText(product.title),
+    title: sanitizeText(product.title) || 'Untitled Product',
     description: sanitizeText(product.description),
-    benefits: product.benefits.map(b => sanitizeText(b)),
+    benefits: sanitizedBenefits,
     price_range: sanitizeText(product.price_range),
     social_caption: product.social_caption ? sanitizeText(product.social_caption) : undefined,
   };
