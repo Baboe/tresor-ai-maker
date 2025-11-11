@@ -13,7 +13,7 @@ interface ProductCardProps {
   price: string;
   image: string;
   status?: string;
-  benefits?: string[];
+  benefits?: string[] | null;
   social_caption?: string;
 }
 
@@ -30,12 +30,16 @@ const ProductCard = ({
   const { toast } = useToast();
 
   const handleGeneratePDF = async () => {
+    const normalizedBenefits = Array.isArray(benefits)
+      ? benefits.filter((benefit): benefit is string => typeof benefit === 'string' && benefit.trim().length > 0)
+      : [];
+
     setIsGenerating(true);
     try {
       const pdfBytes = await generateWorkbookPDF({
         title,
         description,
-        benefits,
+        benefits: normalizedBenefits,
         price_range: price,
         social_caption,
       });
