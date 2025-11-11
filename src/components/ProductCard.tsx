@@ -1,7 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { generateWorkbookPDF } from "@/lib/pdfGenerator";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   title: string;
@@ -9,6 +13,8 @@ interface ProductCardProps {
   price: string;
   image: string;
   status?: string;
+  benefits?: string[];
+  social_caption?: string;
 }
 
 const ProductCard = ({
@@ -16,8 +22,58 @@ const ProductCard = ({
   description,
   price,
   image,
-  status = "draft"
+  status = "draft",
+  benefits = [],
+  social_caption
 }: ProductCardProps) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { toast } = useToast();
+
+  const handleGeneratePDF = async () => {
+    setIsGenerating(true);
+    try {
+      const pdfBytes = await generateWorkbookPDF({
+        title,
+        description,
+        benefits,
+        price_range: price,
+        social_caption,
+      });
+
+      const fileName = `${title.toLowerCase().replace(/\s+/g, '-')}-workbook.pdf`;
+      const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
+      
+      const { error } = await supabase.storage
+        .from('product-pdfs')
+        .upload(fileName, blob, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (error) throw error;
+
+      // Download the PDF
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+
+      toast({
+        title: "✨ Workbook Generated!",
+        description: "Your PDF workbook is ready and saved to storage.",
+      });
+    } catch (error: any) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate PDF workbook",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <Card className="overflow-hidden shadow-card hover:shadow-hover transition-all duration-300 bg-gradient-to-br from-card to-cream border-border">
       <div className="aspect-[4/3] bg-beige relative overflow-hidden">
@@ -49,9 +105,22 @@ const ProductCard = ({
         </div>
         
         <div className="flex gap-2">
-          <Button className="flex-1 bg-gradient-to-r from-primary to-rose-dark hover:opacity-90">
-            <Download className="w-4 h-4 mr-2" />
-            View Details
+          <Button
+            onClick={handleGeneratePDF}
+            disabled={isGenerating}
+            className="flex-1 bg-gradient-to-r from-primary to-rose-dark hover:opacity-90"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4 mr-2" />
+                Generate PDF
+              </>
+            )}
           </Button>
         </div>
       </div>

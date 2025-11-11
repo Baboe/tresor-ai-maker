@@ -114,6 +114,8 @@ const Index = () => {
                 price={product.price_range}
                 image={product.cover_image_url || "https://images.unsplash.com/photo-1455849318743-b2233052fcff?w=400"}
                 status={product.status}
+                benefits={product.benefits}
+                social_caption={product.social_caption}
               />
             ))}
           </div>
