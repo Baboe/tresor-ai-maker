@@ -7,6 +7,29 @@ import { generateWorkbookPDF } from "@/lib/pdfGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+function generateFileName(title: string): string {
+  const sanitizedTitle = title
+    ?.trim()
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+
+  if (!sanitizedTitle) {
+    return "workbook.pdf";
+  }
+
+  return `${sanitizedTitle}.pdf`;
+}
+
+function downloadPDF(pdfBytes: ArrayBuffer, fileName: string) {
+  const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 interface ProductCardProps {
   title: string;
   description: string;
@@ -44,8 +67,9 @@ const ProductCard = ({
         social_caption,
       });
 
-      const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-      
+      const fileName = generateFileName(title);
+      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+
       const { error } = await supabase.storage
         .from('product-pdfs')
         .upload(fileName, blob, {
@@ -55,11 +79,7 @@ const ProductCard = ({
 
       if (error) throw error;
 
-      // Download the PDF
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
+      downloadPDF(pdfBytes, fileName);
 
       toast({
         title: "✨ Workbook Generated!",
