@@ -16,7 +16,26 @@ interface ProductData {
   social_caption?: string;
 }
 
+// Remove emojis and non-WinAnsi characters
+function sanitizeText(text: string): string {
+  // Remove emojis and characters outside basic Latin range
+  return text.replace(/[^\x00-\xFF]/g, '').replace(/[\u0080-\u00FF]/g, (char) => {
+    // Keep common characters, remove others
+    const code = char.charCodeAt(0);
+    if (code >= 0x80 && code <= 0x9F) return ''; // Control characters
+    return char;
+  });
+}
+
 export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Array> {
+  // Sanitize all product data
+  const sanitizedProduct = {
+    title: sanitizeText(product.title),
+    description: sanitizeText(product.description),
+    benefits: product.benefits.map(b => sanitizeText(b)),
+    price_range: sanitizeText(product.price_range),
+    social_caption: product.social_caption ? sanitizeText(product.social_caption) : undefined,
+  };
   const pdfDoc = await PDFDocument.create();
   const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
   const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
@@ -48,7 +67,7 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
   // Title
   const titleSize = 32;
-  const titleLines = wrapText(product.title, contentWidth, titleSize, timesRomanBold);
+  const titleLines = wrapText(sanitizedProduct.title, contentWidth, titleSize, timesRomanBold);
   let yPosition = pageHeight - 200;
   
   titleLines.forEach(line => {
@@ -64,7 +83,7 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
   });
 
   // Subtitle
-  coverPage.drawText('Your Personal Workbook ✨', {
+  coverPage.drawText('Your Personal Workbook', {
     x: margin,
     y: yPosition - 40,
     size: 18,
@@ -111,7 +130,7 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
   yPosition -= 60;
 
-  const descLines = wrapText(product.description, contentWidth, 14, timesRoman);
+  const descLines = wrapText(sanitizedProduct.description, contentWidth, 14, timesRoman);
   descLines.forEach(line => {
     introPage.drawText(line, {
       x: margin,
@@ -133,7 +152,7 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
   });
 
   yPosition -= 35;
-  product.benefits.forEach(benefit => {
+  sanitizedProduct.benefits.forEach(benefit => {
     const benefitLines = wrapText(`• ${benefit}`, contentWidth - 20, 13, timesRoman);
     benefitLines.forEach(line => {
       introPage.drawText(line, {
@@ -234,7 +253,7 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
     color: COLORS.pink,
   });
 
-  reflectionPage.drawText('You\'re capable of amazing things ✨', {
+  reflectionPage.drawText('You\'re capable of amazing things', {
     x: margin,
     y: 50,
     size: 12,
