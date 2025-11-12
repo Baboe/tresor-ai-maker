@@ -6,6 +6,7 @@ import { useState } from "react";
 import { generateWorkbookPDF } from "@/lib/pdfGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { WorksheetEditor, WorksheetTemplates } from "./WorksheetEditor";
 
 function generateFileName(title: string): string {
   const sanitizedTitle = title
@@ -71,6 +72,7 @@ const ProductCard = ({
   social_caption
 }: ProductCardProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [worksheetTemplates, setWorksheetTemplates] = useState<WorksheetTemplates>({});
   const { toast } = useToast();
 
   const handleGeneratePDF = async () => {
@@ -93,6 +95,7 @@ const ProductCard = ({
         next_steps,
         price_range: price,
         social_caption,
+        worksheetTemplates,
       });
 
       const fileName = generateFileName(title);
@@ -155,7 +158,12 @@ const ProductCard = ({
           </Badge>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-col">
+          <WorksheetEditor 
+            onSave={setWorksheetTemplates}
+            initialTemplates={worksheetTemplates}
+          />
+          
           <Button
             onClick={handleGeneratePDF}
             disabled={isGenerating}

@@ -16,6 +16,34 @@ interface Pillar {
   how_to_apply: string;
 }
 
+interface DailyPlannerTemplate {
+  title: string;
+  sections: {
+    name: string;
+    prompts: string[];
+  }[];
+}
+
+interface HabitTrackerTemplate {
+  title: string;
+  habits: string[];
+  trackingPeriod: "daily" | "weekly" | "monthly";
+}
+
+interface GoalSettingTemplate {
+  title: string;
+  categories: {
+    name: string;
+    questions: string[];
+  }[];
+}
+
+interface WorksheetTemplates {
+  dailyPlanner?: DailyPlannerTemplate;
+  habitTracker?: HabitTrackerTemplate;
+  goalSetting?: GoalSettingTemplate;
+}
+
 interface ProductData {
   title?: string | null;
   tagline?: string | null;
@@ -29,6 +57,7 @@ interface ProductData {
   next_steps?: string | null;
   price_range?: string | null;
   social_caption?: string | null;
+  worksheetTemplates?: WorksheetTemplates;
 }
 
 const NOTO_SANS_REGULAR_BASE64 = [
@@ -6600,7 +6629,8 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
       ? product.reflection_questions.map(q => sanitizeText(q))
       : [],
     next_steps: sanitizeText(product.next_steps?.trim() || ''),
-    social_caption: sanitizeText(product.social_caption?.trim() || '')
+    social_caption: sanitizeText(product.social_caption?.trim() || ''),
+    worksheetTemplates: product.worksheetTemplates
   };
 
   // Helper function to add a new page
@@ -6890,7 +6920,178 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
     });
   }
 
-  // 8. NEXT STEPS
+  // 8. CUSTOM WORKSHEET TEMPLATES
+  if (sanitizedProduct.worksheetTemplates) {
+    const templates = sanitizedProduct.worksheetTemplates;
+
+    // Daily Planner Template
+    if (templates.dailyPlanner) {
+      const dailyPage = addPage();
+      yPosition = pageHeight - margin - 20;
+
+      dailyPage.drawText(sanitizeText(templates.dailyPlanner.title), {
+        x: margin,
+        y: yPosition,
+        size: 28,
+        font: notoSans,
+        color: COLORS.darkPink,
+      });
+      yPosition -= 50;
+
+      templates.dailyPlanner.sections.forEach((section) => {
+        if (yPosition < margin + 150) return;
+
+        dailyPage.drawText(sanitizeText(section.name), {
+          x: margin,
+          y: yPosition,
+          size: 16,
+          font: notoSans,
+          color: COLORS.darkPink,
+        });
+        yPosition -= 30;
+
+        section.prompts.forEach((prompt) => {
+          if (yPosition < margin + 80) return;
+
+          dailyPage.drawText(sanitizeText(prompt), {
+            x: margin + 10,
+            y: yPosition,
+            size: 11,
+            font: notoSans,
+            color: COLORS.text,
+          });
+          yPosition -= 20;
+
+          // Add lines for writing
+          for (let i = 0; i < 3; i++) {
+            if (yPosition < margin + 30) return;
+            dailyPage.drawLine({
+              start: { x: margin + 10, y: yPosition },
+              end: { x: pageWidth - margin, y: yPosition },
+              thickness: 0.5,
+              color: COLORS.pink,
+            });
+            yPosition -= 15;
+          }
+          yPosition -= 10;
+        });
+
+        yPosition -= 20;
+      });
+    }
+
+    // Habit Tracker Template
+    if (templates.habitTracker) {
+      const habitPage = addPage();
+      yPosition = pageHeight - margin - 20;
+
+      habitPage.drawText(sanitizeText(templates.habitTracker.title), {
+        x: margin,
+        y: yPosition,
+        size: 28,
+        font: notoSans,
+        color: COLORS.darkPink,
+      });
+      yPosition -= 40;
+
+      const periodText = templates.habitTracker.trackingPeriod.charAt(0).toUpperCase() + 
+                        templates.habitTracker.trackingPeriod.slice(1) + " Tracker";
+      habitPage.drawText(periodText, {
+        x: margin,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.lightText,
+      });
+      yPosition -= 40;
+
+      // Draw habit tracker grid
+      const cellWidth = 30;
+      const numDays = templates.habitTracker.trackingPeriod === "daily" ? 7 : 
+                     templates.habitTracker.trackingPeriod === "weekly" ? 4 : 31;
+
+      templates.habitTracker.habits.forEach((habit) => {
+        if (yPosition < margin + 50) return;
+
+        habitPage.drawText(sanitizeText(habit), {
+          x: margin,
+          y: yPosition,
+          size: 11,
+          font: notoSans,
+          color: COLORS.text,
+        });
+
+        // Draw checkbox grid
+        for (let i = 0; i < Math.min(numDays, 10); i++) {
+          const x = margin + 200 + (i * cellWidth);
+          habitPage.drawRectangle({
+            x,
+            y: yPosition - 5,
+            width: 20,
+            height: 20,
+            borderColor: COLORS.pink,
+            borderWidth: 1,
+          });
+        }
+
+        yPosition -= 35;
+      });
+    }
+
+    // Goal Setting Template
+    if (templates.goalSetting) {
+      templates.goalSetting.categories.forEach((category) => {
+        const goalPage = addPage();
+        yPosition = pageHeight - margin - 20;
+
+        goalPage.drawText(sanitizeText(templates.goalSetting!.title), {
+          x: margin,
+          y: yPosition,
+          size: 28,
+          font: notoSans,
+          color: COLORS.darkPink,
+        });
+        yPosition -= 50;
+
+        goalPage.drawText(sanitizeText(category.name), {
+          x: margin,
+          y: yPosition,
+          size: 20,
+          font: notoSans,
+          color: COLORS.darkPink,
+        });
+        yPosition -= 40;
+
+        category.questions.forEach((question) => {
+          if (yPosition < margin + 100) return;
+
+          goalPage.drawText(sanitizeText(question), {
+            x: margin,
+            y: yPosition,
+            size: 12,
+            font: notoSans,
+            color: COLORS.text,
+          });
+          yPosition -= 25;
+
+          // Add lines for writing
+          for (let i = 0; i < 4; i++) {
+            if (yPosition < margin + 30) return;
+            goalPage.drawLine({
+              start: { x: margin, y: yPosition },
+              end: { x: pageWidth - margin, y: yPosition },
+              thickness: 0.5,
+              color: COLORS.pink,
+            });
+            yPosition -= 18;
+          }
+          yPosition -= 15;
+        });
+      });
+    }
+  }
+
+  // 9. NEXT STEPS
   if (sanitizedProduct.next_steps) {
     const nextStepsPage = addPage();
     yPosition = pageHeight - margin - 20;
