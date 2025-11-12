@@ -79,7 +79,7 @@ const ProductCard = ({
 
       if (error) throw error;
 
-      downloadPDF(pdfBytes, fileName);
+      downloadPDF(pdfBytes.buffer as ArrayBuffer, fileName);
 
       toast({
         title: "✨ Workbook Generated!",

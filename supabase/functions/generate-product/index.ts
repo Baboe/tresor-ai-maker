@@ -41,28 +41,62 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Create a complete digital product based on this trending topic:
-            
+            content: `You are creating a market-tested digital workbook/planner for 2025-2026 based on this trending topic:
+
             Topic: ${topic}
             Why it's trending: ${explanation}
-            
-            Generate a ready-to-sell product with:
-            1. Catchy title (max 80 characters)
-            2. Two-paragraph description with friendly tone and light emojis 🌸✨
-            3. Array of exactly 5 benefits (short phrases)
-            4. Price range suggestion (e.g., "€15-€25")
-            5. Array of exactly 10 relevant hashtags (just words, no # symbol)
-            6. Short social caption (2-3 sentences promoting the product)
-            
-            Return as JSON:
+
+            It must solve a specific problem in its niche, follow a clear, supportive, and professional tone, and avoid any French words, emojis, or price references.
+            Focus on creating a resource that helps users organize, track, or improve a particular area of their life (e.g., productivity, budgeting, wellness, study, fitness).
+
+            Output format (as JSON):
             {
               "title": "...",
-              "description": "...",
-              "benefits": ["benefit 1", "benefit 2", ...],
+              "tagline": "...",
+              "introduction": "...",
+              "pillars": [
+                { "name": "...", "description": "...", "why_it_matters": "...", "how_to_apply": "..." }
+              ],
+              "worksheets": [
+                "Daily Planner",
+                "Weekly Reflection",
+                "Goal Setting Framework",
+                "Habit Tracker",
+                "Priority Organizer",
+                "Action Steps Worksheet",
+                "Mind Dump Page",
+                "Review Section"
+              ],
+              "bonus_assets": [
+                "Guided video or audio overview of the workbook",
+                "Editable spreadsheet template (e.g., budget tracker)",
+                "Printable checklists",
+                "Digital stickers or icons",
+                "A mini-ebook summarizing the core concepts"
+              ],
+              "reflection_questions": ["...", "..."],
+              "next_steps": "...",
+              "benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
               "price_range": "€15-€25",
-              "hashtags": ["word1", "word2", ...],
+              "hashtags": ["word1", "word2", "word3", "word4", "word5", "word6", "word7", "word8", "word9", "word10"],
               "social_caption": "..."
-            }`
+            }
+
+            Guidelines:
+            1. Title: Concise, benefit-focused, specific about the problem it solves
+            2. Tagline: One-sentence transformation summary
+            3. Introduction: Address main challenge, explain who it's for and why it's effective (2-3 paragraphs)
+            4. Core Framework: 3-5 pillars with name, description, why_it_matters, how_to_apply
+            5. Worksheets & Tools: 6-10 interactive sections (planners, trackers, frameworks)
+            6. Bonus Assets: Supplementary materials to increase value
+            7. Reflection Questions: 10-15 thoughtful, open-ended questions
+            8. Next Steps: Guidance on integrating practices into routine
+            9. Benefits: 5 short benefit phrases
+            10. Price Range: Suggested pricing (e.g., "€15-€25")
+            11. Hashtags: 10 relevant keywords (no # symbol)
+            12. Social Caption: 2-3 sentences promoting the product
+
+            Ensure content is complete, actionable, tailored to the topic's problem area, and feels like a premium product.`
           }
         ],
       }),
