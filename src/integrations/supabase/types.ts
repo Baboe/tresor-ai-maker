@@ -17,45 +17,66 @@ export type Database = {
       products: {
         Row: {
           benefits: string[]
+          bonus_assets: string[] | null
           cover_image_url: string | null
           created_at: string
           description: string
           hashtags: string[]
           id: string
+          introduction: string | null
+          next_steps: string | null
           pdf_url: string | null
+          pillars: Json | null
           price_range: string
+          reflection_questions: string[] | null
           social_caption: string
           status: string
+          tagline: string | null
           title: string
           updated_at: string
+          worksheets: string[] | null
         }
         Insert: {
           benefits?: string[]
+          bonus_assets?: string[] | null
           cover_image_url?: string | null
           created_at?: string
           description: string
           hashtags?: string[]
           id?: string
+          introduction?: string | null
+          next_steps?: string | null
           pdf_url?: string | null
+          pillars?: Json | null
           price_range: string
+          reflection_questions?: string[] | null
           social_caption: string
           status?: string
+          tagline?: string | null
           title: string
           updated_at?: string
+          worksheets?: string[] | null
         }
         Update: {
           benefits?: string[]
+          bonus_assets?: string[] | null
           cover_image_url?: string | null
           created_at?: string
           description?: string
           hashtags?: string[]
           id?: string
+          introduction?: string | null
+          next_steps?: string | null
           pdf_url?: string | null
+          pillars?: Json | null
           price_range?: string
+          reflection_questions?: string[] | null
           social_caption?: string
           status?: string
+          tagline?: string | null
           title?: string
           updated_at?: string
+          worksheets?: string[] | null
         }
         Relationships: []
       }

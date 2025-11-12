@@ -9,10 +9,24 @@ const COLORS = {
   lightText: rgb(0.4, 0.4, 0.4),
 };
 
+interface Pillar {
+  name: string;
+  description: string;
+  why_it_matters: string;
+  how_to_apply: string;
+}
+
 interface ProductData {
   title?: string | null;
+  tagline?: string | null;
   description?: string | null;
+  introduction?: string | null;
   benefits?: (string | null | undefined)[] | null;
+  pillars?: Pillar[] | null;
+  worksheets?: string[] | null;
+  bonus_assets?: string[] | null;
+  reflection_questions?: string[] | null;
+  next_steps?: string | null;
   price_range?: string | null;
   social_caption?: string | null;
 }
@@ -6542,226 +6556,367 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
   const margin = 60;
   const contentWidth = pageWidth - margin * 2;
 
-  const title = product.title?.trim() || 'Untitled Product';
-  const description = product.description?.trim() || 'Use this space to describe your amazing offer.';
-  const benefits = Array.isArray(product.benefits)
-    ? product.benefits.filter((benefit): benefit is string => typeof benefit === 'string' && benefit.trim().length > 0)
-    : [];
-  const priceRange = product.price_range?.trim();
-  const socialCaption = product.social_caption?.trim();
+  // Sanitize all text to remove emojis and unsupported characters
+  function sanitizeText(text: string): string {
+    let sanitized = text
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/\u2013/g, '-')
+      .replace(/\u2014/g, '--')
+      .replace(/\u2026/g, '...')
+      .replace(/\u2022/g, '*')
+      .replace(/[\n\r]+/g, ' ')
+      .replace(/\s+/g, ' ');
+    
+    sanitized = sanitized.replace(/[^\x20-\x7E]/g, '');
+    return sanitized.trim();
+  }
 
-  const coverPage = pdfDoc.addPage([pageWidth, pageHeight]);
+  const sanitizedProduct = {
+    title: sanitizeText(product.title?.trim() || 'Untitled Workbook'),
+    tagline: sanitizeText(product.tagline?.trim() || ''),
+    description: sanitizeText(product.description?.trim() || ''),
+    introduction: sanitizeText(product.introduction?.trim() || ''),
+    benefits: Array.isArray(product.benefits)
+      ? product.benefits
+          .filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+          .map(b => sanitizeText(b))
+      : [],
+    pillars: Array.isArray(product.pillars)
+      ? product.pillars.map(p => ({
+          name: sanitizeText(p.name || ''),
+          description: sanitizeText(p.description || ''),
+          why_it_matters: sanitizeText(p.why_it_matters || ''),
+          how_to_apply: sanitizeText(p.how_to_apply || '')
+        }))
+      : [],
+    worksheets: Array.isArray(product.worksheets)
+      ? product.worksheets.map(w => sanitizeText(w))
+      : [],
+    bonus_assets: Array.isArray(product.bonus_assets)
+      ? product.bonus_assets.map(b => sanitizeText(b))
+      : [],
+    reflection_questions: Array.isArray(product.reflection_questions)
+      ? product.reflection_questions.map(q => sanitizeText(q))
+      : [],
+    next_steps: sanitizeText(product.next_steps?.trim() || ''),
+    social_caption: sanitizeText(product.social_caption?.trim() || '')
+  };
+
+  // Helper function to add a new page
+  function addPage(): PDFPage {
+    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: pageHeight,
+      color: COLORS.beige,
+    });
+    return page;
+  }
+
+  // 1. COVER PAGE
+  const coverPage = addPage();
   coverPage.drawRectangle({
     x: 0,
-    y: 0,
+    y: pageHeight - 200,
     width: pageWidth,
-    height: pageHeight,
-    color: COLORS.beige,
-  });
-
-  coverPage.drawRectangle({
-    x: 0,
-    y: pageHeight - 150,
-    width: pageWidth,
-    height: 150,
+    height: 200,
     color: COLORS.pink,
   });
 
-  const titleSize = 32;
-  const titleLines = wrapText(title, notoSans, titleSize, contentWidth);
-  let yPosition = pageHeight - 200;
-
+  let yPosition = pageHeight - 100;
+  const titleLines = wrapText(sanitizedProduct.title, notoSans, 32, contentWidth);
   titleLines.forEach((line) => {
-    const lineWidth = notoSans.widthOfTextAtSize(line, titleSize);
+    const lineWidth = notoSans.widthOfTextAtSize(line, 32);
     coverPage.drawText(line, {
       x: (pageWidth - lineWidth) / 2,
       y: yPosition,
-      size: titleSize,
+      size: 32,
       font: notoSans,
       color: COLORS.text,
     });
-    yPosition -= titleSize + 10;
+    yPosition -= 40;
   });
 
-  coverPage.drawText('Your Personal Workbook ✨', {
-    x: margin,
-    y: yPosition - 40,
-    size: 18,
-    font: notoSans,
-    color: COLORS.darkPink,
-  });
-
-  coverPage.drawRectangle({
-    x: margin,
-    y: 100,
-    width: contentWidth,
-    height: 2,
-    color: COLORS.pink,
-  });
-
-  coverPage.drawText('TrésorAI', {
-    x: margin,
-    y: 70,
-    size: 14,
-    font: notoSans,
-    color: COLORS.lightText,
-  });
-
-  const introPage = pdfDoc.addPage([pageWidth, pageHeight]);
-  introPage.drawRectangle({
-    x: 0,
-    y: 0,
-    width: pageWidth,
-    height: pageHeight,
-    color: COLORS.beige,
-  });
-
-  yPosition = pageHeight - margin - 20;
-
-  introPage.drawText('Welcome', {
-    x: margin,
-    y: yPosition,
-    size: 28,
-    font: notoSans,
-    color: COLORS.darkPink,
-  });
-
-  yPosition -= 60;
-  const descLines = wrapText(description, notoSans, 14, contentWidth);
-  yPosition = drawMultilineText(introPage, descLines, margin, yPosition, notoSans, 14, COLORS.text, 22);
-
-  if (priceRange) {
-    yPosition -= 10;
-    introPage.drawText(`Investment: ${priceRange}`, {
-      x: margin,
-      y: yPosition,
-      size: 12,
-      font: notoSans,
-      color: COLORS.lightText,
+  if (sanitizedProduct.tagline) {
+    yPosition -= 20;
+    const taglineLines = wrapText(sanitizedProduct.tagline, notoSans, 14, contentWidth);
+    taglineLines.forEach((line) => {
+      const lineWidth = notoSans.widthOfTextAtSize(line, 14);
+      coverPage.drawText(line, {
+        x: (pageWidth - lineWidth) / 2,
+        y: yPosition,
+        size: 14,
+        font: notoSans,
+        color: COLORS.darkPink,
+      });
+      yPosition -= 20;
     });
-    yPosition -= 30;
-  } else {
-    yPosition -= 30;
   }
 
-  introPage.drawText("What You'll Discover:", {
-    x: margin,
-    y: yPosition,
-    size: 18,
-    font: notoSans,
-    color: COLORS.text,
-  });
+  // 2. INTRODUCTION PAGE
+  if (sanitizedProduct.introduction) {
+    const introPage = addPage();
+    yPosition = pageHeight - margin - 20;
 
-  yPosition -= 35;
-  benefits.forEach((benefit) => {
-    const benefitLines = wrapText(`• ${benefit}`, notoSans, 13, contentWidth - 20);
-    yPosition = drawMultilineText(introPage, benefitLines, margin + 10, yPosition, notoSans, 13, COLORS.text, 24);
-    yPosition -= 5;
-  });
-
-  if (socialCaption) {
-    yPosition -= 10;
-    introPage.drawText('Shareable Caption:', {
+    introPage.drawText('Introduction', {
       x: margin,
       y: yPosition,
-      size: 16,
+      size: 28,
       font: notoSans,
       color: COLORS.darkPink,
     });
 
-    yPosition -= 30;
-    const captionLines = wrapText(socialCaption, notoSans, 12, contentWidth);
-    drawMultilineText(introPage, captionLines, margin, yPosition, notoSans, 12, COLORS.lightText, 20);
+    yPosition -= 50;
+    const introLines = wrapText(sanitizedProduct.introduction, notoSans, 12, contentWidth);
+    introLines.forEach((line) => {
+      if (yPosition < margin + 30) return;
+      introPage.drawText(line, {
+        x: margin,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.text,
+      });
+      yPosition -= 18;
+    });
   }
 
-  const daily1Page = pdfDoc.addPage([pageWidth, pageHeight]);
-  daily1Page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: pageWidth,
-    height: pageHeight,
-    color: COLORS.beige,
-  });
+  // 3. CORE PILLARS
+  if (sanitizedProduct.pillars.length > 0) {
+    sanitizedProduct.pillars.forEach((pillar, index) => {
+      const pillarPage = addPage();
+      yPosition = pageHeight - margin - 20;
 
-  addDailySectionContent(daily1Page, 'Day 1-7: Foundation', notoSans, notoSans, margin, contentWidth, pageHeight);
+      pillarPage.drawText(`Pillar ${index + 1}: ${pillar.name}`, {
+        x: margin,
+        y: yPosition,
+        size: 24,
+        font: notoSans,
+        color: COLORS.darkPink,
+      });
 
-  const daily2Page = pdfDoc.addPage([pageWidth, pageHeight]);
-  daily2Page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: pageWidth,
-    height: pageHeight,
-    color: COLORS.beige,
-  });
+      yPosition -= 50;
+      
+      if (pillar.description) {
+        const descLines = wrapText(pillar.description, notoSans, 12, contentWidth);
+        descLines.forEach((line) => {
+          if (yPosition < margin + 30) return;
+          pillarPage.drawText(line, {
+            x: margin,
+            y: yPosition,
+            size: 12,
+            font: notoSans,
+            color: COLORS.text,
+          });
+          yPosition -= 18;
+        });
+        yPosition -= 20;
+      }
 
-  addDailySectionContent(daily2Page, 'Day 8-14: Growth', notoSans, notoSans, margin, contentWidth, pageHeight);
+      if (pillar.why_it_matters) {
+        if (yPosition < margin + 60) return;
+        pillarPage.drawText('Why It Matters:', {
+          x: margin,
+          y: yPosition,
+          size: 14,
+          font: notoSans,
+          color: COLORS.darkPink,
+        });
+        yPosition -= 25;
+        
+        const whyLines = wrapText(pillar.why_it_matters, notoSans, 11, contentWidth);
+        whyLines.forEach((line) => {
+          if (yPosition < margin + 30) return;
+          pillarPage.drawText(line, {
+            x: margin,
+            y: yPosition,
+            size: 11,
+            font: notoSans,
+            color: COLORS.text,
+          });
+          yPosition -= 16;
+        });
+        yPosition -= 20;
+      }
 
-  const reflectionPage = pdfDoc.addPage([pageWidth, pageHeight]);
-  reflectionPage.drawRectangle({
-    x: 0,
-    y: 0,
-    width: pageWidth,
-    height: pageHeight,
-    color: COLORS.beige,
-  });
+      if (pillar.how_to_apply) {
+        if (yPosition < margin + 60) return;
+        pillarPage.drawText('How to Apply:', {
+          x: margin,
+          y: yPosition,
+          size: 14,
+          font: notoSans,
+          color: COLORS.darkPink,
+        });
+        yPosition -= 25;
+        
+        const howLines = wrapText(pillar.how_to_apply, notoSans, 11, contentWidth);
+        howLines.forEach((line) => {
+          if (yPosition < margin + 30) return;
+          pillarPage.drawText(line, {
+            x: margin,
+            y: yPosition,
+            size: 11,
+            font: notoSans,
+            color: COLORS.text,
+          });
+          yPosition -= 16;
+        });
+      }
+    });
+  }
 
-  yPosition = pageHeight - margin - 20;
+  // 4. WORKSHEETS & TOOLS
+  if (sanitizedProduct.worksheets.length > 0) {
+    const worksheetPage = addPage();
+    yPosition = pageHeight - margin - 20;
 
-  reflectionPage.drawText('Reflection & Next Steps', {
-    x: margin,
-    y: yPosition,
-    size: 28,
-    font: notoSans,
-    color: COLORS.darkPink,
-  });
-
-  yPosition -= 60;
-  const reflectionPrompts = [
-    'What were your biggest insights?',
-    'What changes will you implement?',
-    'How do you feel about your progress?',
-    'What are your next action steps?',
-  ];
-
-  reflectionPrompts.forEach((prompt) => {
-    reflectionPage.drawText(prompt, {
+    worksheetPage.drawText('Worksheets & Tools', {
       x: margin,
       y: yPosition,
-      size: 14,
+      size: 28,
       font: notoSans,
-      color: COLORS.text,
+      color: COLORS.darkPink,
     });
 
-    yPosition -= 30;
-
-    for (let i = 0; i < 4; i += 1) {
-      reflectionPage.drawLine({
-        start: { x: margin, y: yPosition },
-        end: { x: pageWidth - margin, y: yPosition },
-        thickness: 0.5,
-        color: COLORS.pink,
+    yPosition -= 50;
+    sanitizedProduct.worksheets.forEach((worksheet) => {
+      if (yPosition < margin + 30) return;
+      worksheetPage.drawText(`* ${worksheet}`, {
+        x: margin + 10,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.text,
       });
       yPosition -= 25;
-    }
+    });
+  }
 
-    yPosition -= 20;
-  });
+  // 5. BENEFITS
+  if (sanitizedProduct.benefits.length > 0) {
+    const benefitsPage = addPage();
+    yPosition = pageHeight - margin - 20;
 
-  reflectionPage.drawRectangle({
-    x: margin,
-    y: 80,
-    width: contentWidth,
-    height: 2,
-    color: COLORS.pink,
-  });
+    benefitsPage.drawText('Key Benefits', {
+      x: margin,
+      y: yPosition,
+      size: 28,
+      font: notoSans,
+      color: COLORS.darkPink,
+    });
 
-  reflectionPage.drawText("You're capable of amazing things ✨", {
-    x: margin,
-    y: 50,
-    size: 12,
-    font: notoSans,
-    color: COLORS.darkPink,
-  });
+    yPosition -= 50;
+    sanitizedProduct.benefits.forEach((benefit) => {
+      if (yPosition < margin + 30) return;
+      benefitsPage.drawText(`* ${benefit}`, {
+        x: margin + 10,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.text,
+      });
+      yPosition -= 25;
+    });
+  }
+
+  // 6. BONUS ASSETS
+  if (sanitizedProduct.bonus_assets.length > 0) {
+    const bonusPage = addPage();
+    yPosition = pageHeight - margin - 20;
+
+    bonusPage.drawText('Bonus Assets', {
+      x: margin,
+      y: yPosition,
+      size: 28,
+      font: notoSans,
+      color: COLORS.darkPink,
+    });
+
+    yPosition -= 50;
+    sanitizedProduct.bonus_assets.forEach((asset) => {
+      if (yPosition < margin + 30) return;
+      bonusPage.drawText(`* ${asset}`, {
+        x: margin + 10,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.text,
+      });
+      yPosition -= 25;
+    });
+  }
+
+  // 7. REFLECTION QUESTIONS
+  if (sanitizedProduct.reflection_questions.length > 0) {
+    const reflectionPage = addPage();
+    yPosition = pageHeight - margin - 20;
+
+    reflectionPage.drawText('Reflection Questions', {
+      x: margin,
+      y: yPosition,
+      size: 28,
+      font: notoSans,
+      color: COLORS.darkPink,
+    });
+
+    yPosition -= 50;
+    sanitizedProduct.reflection_questions.forEach((question) => {
+      if (yPosition < margin + 100) return;
+      
+      reflectionPage.drawText(question, {
+        x: margin,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.text,
+      });
+      yPosition -= 25;
+
+      for (let i = 0; i < 3; i++) {
+        if (yPosition < margin + 30) return;
+        reflectionPage.drawLine({
+          start: { x: margin, y: yPosition },
+          end: { x: pageWidth - margin, y: yPosition },
+          thickness: 0.5,
+          color: COLORS.pink,
+        });
+        yPosition -= 20;
+      }
+      yPosition -= 15;
+    });
+  }
+
+  // 8. NEXT STEPS
+  if (sanitizedProduct.next_steps) {
+    const nextStepsPage = addPage();
+    yPosition = pageHeight - margin - 20;
+
+    nextStepsPage.drawText('Next Steps', {
+      x: margin,
+      y: yPosition,
+      size: 28,
+      font: notoSans,
+      color: COLORS.darkPink,
+    });
+
+    yPosition -= 50;
+    const nextStepsLines = wrapText(sanitizedProduct.next_steps, notoSans, 12, contentWidth);
+    nextStepsLines.forEach((line) => {
+      if (yPosition < margin + 30) return;
+      nextStepsPage.drawText(line, {
+        x: margin,
+        y: yPosition,
+        size: 12,
+        font: notoSans,
+        color: COLORS.text,
+      });
+      yPosition -= 18;
+    });
+  }
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;

@@ -30,6 +30,13 @@ function downloadPDF(pdfBytes: ArrayBuffer, fileName: string) {
   URL.revokeObjectURL(link.href);
 }
 
+interface Pillar {
+  name: string;
+  description: string;
+  why_it_matters: string;
+  how_to_apply: string;
+}
+
 interface ProductCardProps {
   title: string;
   description: string;
@@ -37,6 +44,13 @@ interface ProductCardProps {
   image: string;
   status?: string;
   benefits?: string[] | null;
+  tagline?: string;
+  introduction?: string;
+  pillars?: Pillar[] | null;
+  worksheets?: string[] | null;
+  bonus_assets?: string[] | null;
+  reflection_questions?: string[] | null;
+  next_steps?: string;
   social_caption?: string;
 }
 
@@ -47,6 +61,13 @@ const ProductCard = ({
   image,
   status = "draft",
   benefits = [],
+  tagline,
+  introduction,
+  pillars,
+  worksheets,
+  bonus_assets,
+  reflection_questions,
+  next_steps,
   social_caption
 }: ProductCardProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,8 +82,15 @@ const ProductCard = ({
     try {
       const pdfBytes = await generateWorkbookPDF({
         title,
+        tagline,
         description,
+        introduction,
         benefits: normalizedBenefits,
+        pillars,
+        worksheets,
+        bonus_assets,
+        reflection_questions,
+        next_steps,
         price_range: price,
         social_caption,
       });

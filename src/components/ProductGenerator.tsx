@@ -85,8 +85,15 @@ export const ProductGenerator = () => {
       // Step 3: Save to database
       const { error: dbError } = await supabase.from('products').insert({
         title: product.title,
+        tagline: product.tagline,
         description: product.description,
+        introduction: product.introduction,
         benefits: product.benefits,
+        pillars: product.pillars,
+        worksheets: product.worksheets,
+        bonus_assets: product.bonus_assets,
+        reflection_questions: product.reflection_questions,
+        next_steps: product.next_steps,
         price_range: product.price_range,
         hashtags: product.hashtags,
         social_caption: product.social_caption,
