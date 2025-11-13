@@ -1,6 +1,8 @@
 import { PDFDocument, PDFFont, PDFPage, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 
+type Color = ReturnType<typeof rgb>;
+
 const COLORS = {
   beige: rgb(0.96, 0.93, 0.88), // #f5ede0
   pink: rgb(0.95, 0.82, 0.86), // #f2d1db
@@ -6646,6 +6648,151 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
     return page;
   }
 
+  type RepeatLabelOptions = {
+    text: string;
+    fontSize?: number;
+    color?: Color;
+  };
+
+  function startSectionPage(title: string, isContinuation = false) {
+    const page = addPage();
+    let yPosition = pageHeight - margin - 20;
+
+    if (title) {
+      const header = isContinuation ? `${title} (cont.)` : title;
+      page.drawText(header, {
+        x: margin,
+        y: yPosition,
+        size: 28,
+        font: notoSans,
+        color: COLORS.darkPink,
+      });
+      yPosition -= 40;
+    }
+
+    return { page, yPosition };
+  }
+
+  function ensureSectionSpace(
+    page: PDFPage,
+    yPosition: number,
+    neededSpace: number,
+    sectionTitle: string,
+    onNewPage?: (page: PDFPage, startY: number) => number
+  ) {
+    if (yPosition < margin + neededSpace) {
+      const nextSection = startSectionPage(sectionTitle, true);
+      const adjustedY = onNewPage ? onNewPage(nextSection.page, nextSection.yPosition) : nextSection.yPosition;
+      return { page: nextSection.page, yPosition: adjustedY };
+    }
+
+    return { page, yPosition };
+  }
+
+  function drawParagraphBlock(
+    page: PDFPage,
+    yPosition: number,
+    text: string,
+    options: {
+      sectionTitle: string;
+      fontSize?: number;
+      lineHeight?: number;
+      xOffset?: number;
+      color?: Color;
+      repeatLabel?: RepeatLabelOptions;
+    }
+  ) {
+    if (!text) {
+      return { page, yPosition };
+    }
+
+    const {
+      sectionTitle,
+      fontSize = 12,
+      lineHeight = 18,
+      xOffset = 0,
+      color = COLORS.text,
+      repeatLabel,
+    } = options;
+
+    const lines = wrapText(text, notoSans, fontSize, contentWidth - xOffset);
+
+    lines.forEach((line) => {
+      const result = ensureSectionSpace(
+        page,
+        yPosition,
+        lineHeight + 5,
+        sectionTitle,
+        repeatLabel
+          ? (newPage, startY) => {
+              const labelSize = repeatLabel.fontSize ?? 16;
+              newPage.drawText(repeatLabel.text, {
+                x: margin,
+                y: startY,
+                size: labelSize,
+                font: notoSans,
+                color: repeatLabel.color ?? COLORS.darkPink,
+              });
+              return startY - labelSize - 10;
+            }
+          : undefined
+      );
+
+      page = result.page;
+      yPosition = result.yPosition;
+
+      page.drawText(line, {
+        x: margin + xOffset,
+        y: yPosition,
+        size: fontSize,
+        font: notoSans,
+        color,
+      });
+
+      yPosition -= lineHeight;
+    });
+
+    return { page, yPosition };
+  }
+
+  function drawBulletList(
+    page: PDFPage,
+    yPosition: number,
+    items: string[],
+    options: { sectionTitle: string; fontSize?: number; lineHeight?: number }
+  ) {
+    const { sectionTitle, fontSize = 12, lineHeight = 20 } = options;
+    const bulletIndent = 10;
+    const availableWidth = contentWidth - bulletIndent - 10;
+
+    items
+      .filter((item) => item && item.trim().length > 0)
+      .forEach((item) => {
+        const lines = wrapText(item, notoSans, fontSize, availableWidth);
+
+        lines.forEach((line, lineIndex) => {
+          const result = ensureSectionSpace(page, yPosition, lineHeight, sectionTitle);
+          page = result.page;
+          yPosition = result.yPosition;
+
+          const prefix = lineIndex === 0 ? '• ' : '  ';
+          page.drawText(`${prefix}${line}`, {
+            x: margin + bulletIndent,
+            y: yPosition,
+            size: fontSize,
+            font: notoSans,
+            color: COLORS.text,
+          });
+
+          yPosition -= lineHeight;
+        });
+
+        yPosition -= 5;
+      });
+
+    return { page, yPosition };
+  }
+
   // 1. COVER PAGE
   const coverPage = addPage();
   coverPage.drawRectangle({
@@ -6688,236 +6835,225 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
   // 2. INTRODUCTION PAGE
   if (sanitizedProduct.introduction) {
-    const introPage = addPage();
-    yPosition = pageHeight - margin - 20;
-
-    introPage.drawText('Introduction', {
-      x: margin,
-      y: yPosition,
-      size: 28,
-      font: notoSans,
-      color: COLORS.darkPink,
-    });
-
-    yPosition -= 50;
-    const introLines = wrapText(sanitizedProduct.introduction, notoSans, 12, contentWidth);
-    introLines.forEach((line) => {
-      if (yPosition < margin + 30) return;
-      introPage.drawText(line, {
-        x: margin,
-        y: yPosition,
-        size: 12,
-        font: notoSans,
-        color: COLORS.text,
-      });
-      yPosition -= 18;
-    });
+    let { page: introPage, yPosition: introY } = startSectionPage('Introduction');
+    ({ page: introPage, yPosition: introY } = drawParagraphBlock(introPage, introY, sanitizedProduct.introduction, {
+      sectionTitle: 'Introduction',
+      fontSize: 12,
+      lineHeight: 18,
+    }));
   }
 
   // 3. CORE PILLARS
   if (sanitizedProduct.pillars.length > 0) {
-    sanitizedProduct.pillars.forEach((pillar, index) => {
-      const pillarPage = addPage();
-      yPosition = pageHeight - margin - 20;
+    let { page: pillarPage, yPosition: pillarY } = startSectionPage('Core Framework');
 
-      pillarPage.drawText(`Pillar ${index + 1}: ${pillar.name}`, {
+    sanitizedProduct.pillars.forEach((pillar, index) => {
+      const pillarTitle = pillar.name?.trim().length
+        ? `Pillar ${index + 1}: ${pillar.name}`
+        : `Pillar ${index + 1}`;
+
+      const headingResult = ensureSectionSpace(pillarPage, pillarY, 60, 'Core Framework');
+      pillarPage = headingResult.page;
+      pillarY = headingResult.yPosition;
+
+      pillarPage.drawText(pillarTitle, {
         x: margin,
-        y: yPosition,
-        size: 24,
+        y: pillarY,
+        size: 20,
         font: notoSans,
         color: COLORS.darkPink,
       });
+      pillarY -= 30;
 
-      yPosition -= 50;
-      
       if (pillar.description) {
-        const descLines = wrapText(pillar.description, notoSans, 12, contentWidth);
-        descLines.forEach((line) => {
-          if (yPosition < margin + 30) return;
-          pillarPage.drawText(line, {
-            x: margin,
-            y: yPosition,
-            size: 12,
-            font: notoSans,
-            color: COLORS.text,
-          });
-          yPosition -= 18;
-        });
-        yPosition -= 20;
+        ({ page: pillarPage, yPosition: pillarY } = drawParagraphBlock(
+          pillarPage,
+          pillarY,
+          pillar.description,
+          {
+            sectionTitle: 'Core Framework',
+            fontSize: 12,
+            lineHeight: 18,
+            repeatLabel: { text: `${pillarTitle} (cont.)`, fontSize: 16 },
+          }
+        ));
+        pillarY -= 10;
       }
 
       if (pillar.why_it_matters) {
-        if (yPosition < margin + 60) return;
-        pillarPage.drawText('Why It Matters:', {
+        const subheadingResult = ensureSectionSpace(
+          pillarPage,
+          pillarY,
+          30,
+          'Core Framework',
+          (newPage, startY) => {
+            newPage.drawText(`${pillarTitle} (cont.)`, {
+              x: margin,
+              y: startY,
+              size: 16,
+              font: notoSans,
+              color: COLORS.darkPink,
+            });
+            return startY - 26;
+          }
+        );
+        pillarPage = subheadingResult.page;
+        pillarY = subheadingResult.yPosition;
+
+        pillarPage.drawText('Why It Matters', {
           x: margin,
-          y: yPosition,
+          y: pillarY,
           size: 14,
           font: notoSans,
           color: COLORS.darkPink,
         });
-        yPosition -= 25;
-        
-        const whyLines = wrapText(pillar.why_it_matters, notoSans, 11, contentWidth);
-        whyLines.forEach((line) => {
-          if (yPosition < margin + 30) return;
-          pillarPage.drawText(line, {
-            x: margin,
-            y: yPosition,
-            size: 11,
-            font: notoSans,
-            color: COLORS.text,
-          });
-          yPosition -= 16;
-        });
-        yPosition -= 20;
+        pillarY -= 22;
+
+        ({ page: pillarPage, yPosition: pillarY } = drawParagraphBlock(
+          pillarPage,
+          pillarY,
+          pillar.why_it_matters,
+          {
+            sectionTitle: 'Core Framework',
+            fontSize: 11,
+            lineHeight: 16,
+            repeatLabel: { text: `${pillarTitle} – Why It Matters (cont.)`, fontSize: 14 },
+          }
+        ));
+        pillarY -= 10;
       }
 
       if (pillar.how_to_apply) {
-        if (yPosition < margin + 60) return;
-        pillarPage.drawText('How to Apply:', {
+        const subheadingResult = ensureSectionSpace(
+          pillarPage,
+          pillarY,
+          30,
+          'Core Framework',
+          (newPage, startY) => {
+            newPage.drawText(`${pillarTitle} (cont.)`, {
+              x: margin,
+              y: startY,
+              size: 16,
+              font: notoSans,
+              color: COLORS.darkPink,
+            });
+            return startY - 26;
+          }
+        );
+        pillarPage = subheadingResult.page;
+        pillarY = subheadingResult.yPosition;
+
+        pillarPage.drawText('How to Apply', {
           x: margin,
-          y: yPosition,
+          y: pillarY,
           size: 14,
           font: notoSans,
           color: COLORS.darkPink,
         });
-        yPosition -= 25;
-        
-        const howLines = wrapText(pillar.how_to_apply, notoSans, 11, contentWidth);
-        howLines.forEach((line) => {
-          if (yPosition < margin + 30) return;
-          pillarPage.drawText(line, {
-            x: margin,
-            y: yPosition,
-            size: 11,
-            font: notoSans,
-            color: COLORS.text,
-          });
-          yPosition -= 16;
-        });
+        pillarY -= 22;
+
+        ({ page: pillarPage, yPosition: pillarY } = drawParagraphBlock(
+          pillarPage,
+          pillarY,
+          pillar.how_to_apply,
+          {
+            sectionTitle: 'Core Framework',
+            fontSize: 11,
+            lineHeight: 16,
+            repeatLabel: { text: `${pillarTitle} – How to Apply (cont.)`, fontSize: 14 },
+          }
+        ));
+        pillarY -= 10;
       }
+
+      pillarY -= 15;
     });
   }
 
   // 4. WORKSHEETS & TOOLS
   if (sanitizedProduct.worksheets.length > 0) {
-    const worksheetPage = addPage();
-    yPosition = pageHeight - margin - 20;
-
-    worksheetPage.drawText('Worksheets & Tools', {
-      x: margin,
-      y: yPosition,
-      size: 28,
-      font: notoSans,
-      color: COLORS.darkPink,
-    });
-
-    yPosition -= 50;
-    sanitizedProduct.worksheets.forEach((worksheet) => {
-      if (yPosition < margin + 30) return;
-      worksheetPage.drawText(`* ${worksheet}`, {
-        x: margin + 10,
-        y: yPosition,
-        size: 12,
-        font: notoSans,
-        color: COLORS.text,
-      });
-      yPosition -= 25;
-    });
+    let { page: worksheetPage, yPosition: worksheetY } = startSectionPage('Worksheets & Tools');
+    ({ page: worksheetPage, yPosition: worksheetY } = drawBulletList(
+      worksheetPage,
+      worksheetY,
+      sanitizedProduct.worksheets,
+      {
+        sectionTitle: 'Worksheets & Tools',
+        fontSize: 12,
+        lineHeight: 22,
+      }
+    ));
   }
 
   // 5. BENEFITS
   if (sanitizedProduct.benefits.length > 0) {
-    const benefitsPage = addPage();
-    yPosition = pageHeight - margin - 20;
-
-    benefitsPage.drawText('Key Benefits', {
-      x: margin,
-      y: yPosition,
-      size: 28,
-      font: notoSans,
-      color: COLORS.darkPink,
-    });
-
-    yPosition -= 50;
-    sanitizedProduct.benefits.forEach((benefit) => {
-      if (yPosition < margin + 30) return;
-      benefitsPage.drawText(`* ${benefit}`, {
-        x: margin + 10,
-        y: yPosition,
-        size: 12,
-        font: notoSans,
-        color: COLORS.text,
-      });
-      yPosition -= 25;
-    });
+    let { page: benefitsPage, yPosition: benefitsY } = startSectionPage('Key Benefits');
+    ({ page: benefitsPage, yPosition: benefitsY } = drawBulletList(
+      benefitsPage,
+      benefitsY,
+      sanitizedProduct.benefits,
+      {
+        sectionTitle: 'Key Benefits',
+        fontSize: 12,
+        lineHeight: 22,
+      }
+    ));
   }
 
   // 6. BONUS ASSETS
   if (sanitizedProduct.bonus_assets.length > 0) {
-    const bonusPage = addPage();
-    yPosition = pageHeight - margin - 20;
-
-    bonusPage.drawText('Bonus Assets', {
-      x: margin,
-      y: yPosition,
-      size: 28,
-      font: notoSans,
-      color: COLORS.darkPink,
-    });
-
-    yPosition -= 50;
-    sanitizedProduct.bonus_assets.forEach((asset) => {
-      if (yPosition < margin + 30) return;
-      bonusPage.drawText(`* ${asset}`, {
-        x: margin + 10,
-        y: yPosition,
-        size: 12,
-        font: notoSans,
-        color: COLORS.text,
-      });
-      yPosition -= 25;
-    });
+    let { page: bonusPage, yPosition: bonusY } = startSectionPage('Bonus Assets');
+    ({ page: bonusPage, yPosition: bonusY } = drawBulletList(
+      bonusPage,
+      bonusY,
+      sanitizedProduct.bonus_assets,
+      {
+        sectionTitle: 'Bonus Assets',
+        fontSize: 12,
+        lineHeight: 22,
+      }
+    ));
   }
 
   // 7. REFLECTION QUESTIONS
   if (sanitizedProduct.reflection_questions.length > 0) {
-    const reflectionPage = addPage();
-    yPosition = pageHeight - margin - 20;
+    let { page: reflectionPage, yPosition: reflectionY } = startSectionPage('Reflection Questions');
+    sanitizedProduct.reflection_questions
+      .filter((question) => question && question.trim().length > 0)
+      .forEach((question, index) => {
+        const questionLines = wrapText(`${index + 1}. ${question}`, notoSans, 12, contentWidth);
 
-    reflectionPage.drawText('Reflection Questions', {
-      x: margin,
-      y: yPosition,
-      size: 28,
-      font: notoSans,
-      color: COLORS.darkPink,
-    });
+        questionLines.forEach((line) => {
+          const result = ensureSectionSpace(reflectionPage, reflectionY, 24, 'Reflection Questions');
+          reflectionPage = result.page;
+          reflectionY = result.yPosition;
 
-    yPosition -= 50;
-    sanitizedProduct.reflection_questions.forEach((question) => {
-      if (yPosition < margin + 100) return;
-      
-      reflectionPage.drawText(question, {
-        x: margin,
-        y: yPosition,
-        size: 12,
-        font: notoSans,
-        color: COLORS.text,
-      });
-      yPosition -= 25;
-
-      for (let i = 0; i < 3; i++) {
-        if (yPosition < margin + 30) return;
-        reflectionPage.drawLine({
-          start: { x: margin, y: yPosition },
-          end: { x: pageWidth - margin, y: yPosition },
-          thickness: 0.5,
-          color: COLORS.pink,
+          reflectionPage.drawText(line, {
+            x: margin,
+            y: reflectionY,
+            size: 12,
+            font: notoSans,
+            color: COLORS.text,
+          });
+          reflectionY -= 20;
         });
-        yPosition -= 20;
-      }
-      yPosition -= 15;
-    });
+
+        for (let i = 0; i < 3; i++) {
+          const lineResult = ensureSectionSpace(reflectionPage, reflectionY, 30, 'Reflection Questions');
+          reflectionPage = lineResult.page;
+          reflectionY = lineResult.yPosition;
+
+          reflectionPage.drawLine({
+            start: { x: margin, y: reflectionY },
+            end: { x: pageWidth - margin, y: reflectionY },
+            thickness: 0.5,
+            color: COLORS.pink,
+          });
+          reflectionY -= 20;
+        }
+
+        reflectionY -= 10;
+      });
   }
 
   // 8. CUSTOM WORKSHEET TEMPLATES
@@ -7093,30 +7229,17 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
   // 9. NEXT STEPS
   if (sanitizedProduct.next_steps) {
-    const nextStepsPage = addPage();
-    yPosition = pageHeight - margin - 20;
-
-    nextStepsPage.drawText('Next Steps', {
-      x: margin,
-      y: yPosition,
-      size: 28,
-      font: notoSans,
-      color: COLORS.darkPink,
-    });
-
-    yPosition -= 50;
-    const nextStepsLines = wrapText(sanitizedProduct.next_steps, notoSans, 12, contentWidth);
-    nextStepsLines.forEach((line) => {
-      if (yPosition < margin + 30) return;
-      nextStepsPage.drawText(line, {
-        x: margin,
-        y: yPosition,
-        size: 12,
-        font: notoSans,
-        color: COLORS.text,
-      });
-      yPosition -= 18;
-    });
+    let { page: nextStepsPage, yPosition: nextY } = startSectionPage('Next Steps');
+    ({ page: nextStepsPage, yPosition: nextY } = drawParagraphBlock(
+      nextStepsPage,
+      nextY,
+      sanitizedProduct.next_steps,
+      {
+        sectionTitle: 'Next Steps',
+        fontSize: 12,
+        lineHeight: 18,
+      }
+    ));
   }
 
   const pdfBytes = await pdfDoc.save();
