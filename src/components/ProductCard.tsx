@@ -80,6 +80,22 @@ const ProductCard = ({
       ? benefits.filter((benefit): benefit is string => typeof benefit === 'string' && benefit.trim().length > 0)
       : [];
 
+    console.log('PDF Generation Data:', {
+      title,
+      tagline,
+      description,
+      introduction,
+      benefits: normalizedBenefits,
+      pillars,
+      worksheets,
+      bonus_assets,
+      reflection_questions,
+      next_steps,
+      price_range: price,
+      social_caption,
+      worksheetTemplates,
+    });
+
     setIsGenerating(true);
     try {
       const pdfBytes = await generateWorkbookPDF({
