@@ -7075,9 +7075,21 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
       yPosition -= 50;
 
       templates.dailyPlanner.sections.forEach((section) => {
-        if (yPosition < margin + 150) return;
+        if (yPosition < margin + 150) {
+          const newPage = addPage();
+          yPosition = pageHeight - margin - 20;
+          newPage.drawText(sanitizeText(templates.dailyPlanner!.title), {
+            x: margin,
+            y: yPosition,
+            size: 28,
+            font: notoSans,
+            color: COLORS.darkPink,
+          });
+          yPosition -= 50;
+        }
 
-        dailyPage.drawText(sanitizeText(section.name), {
+        const currentPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+        currentPage.drawText(sanitizeText(section.name), {
           x: margin,
           y: yPosition,
           size: 16,
@@ -7087,9 +7099,13 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
         yPosition -= 30;
 
         section.prompts.forEach((prompt) => {
-          if (yPosition < margin + 80) return;
+          if (yPosition < margin + 80) {
+            const newPage = addPage();
+            yPosition = pageHeight - margin - 20;
+          }
 
-          dailyPage.drawText(sanitizeText(prompt), {
+          const promptPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+          promptPage.drawText(sanitizeText(prompt), {
             x: margin + 10,
             y: yPosition,
             size: 11,
@@ -7100,8 +7116,12 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
           // Add lines for writing
           for (let i = 0; i < 3; i++) {
-            if (yPosition < margin + 30) return;
-            dailyPage.drawLine({
+            if (yPosition < margin + 30) {
+              const newPage = addPage();
+              yPosition = pageHeight - margin - 20;
+            }
+            const linePage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+            linePage.drawLine({
               start: { x: margin + 10, y: yPosition },
               end: { x: pageWidth - margin, y: yPosition },
               thickness: 0.5,
@@ -7147,9 +7167,31 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
                      templates.habitTracker.trackingPeriod === "weekly" ? 4 : 31;
 
       templates.habitTracker.habits.forEach((habit) => {
-        if (yPosition < margin + 50) return;
+        if (yPosition < margin + 50) {
+          const newPage = addPage();
+          yPosition = pageHeight - margin - 20;
+          newPage.drawText(sanitizeText(templates.habitTracker!.title), {
+            x: margin,
+            y: yPosition,
+            size: 28,
+            font: notoSans,
+            color: COLORS.darkPink,
+          });
+          yPosition -= 40;
+          const periodText = templates.habitTracker!.trackingPeriod.charAt(0).toUpperCase() + 
+                            templates.habitTracker!.trackingPeriod.slice(1) + " Tracker";
+          newPage.drawText(periodText, {
+            x: margin,
+            y: yPosition,
+            size: 12,
+            font: notoSans,
+            color: COLORS.lightText,
+          });
+          yPosition -= 40;
+        }
 
-        habitPage.drawText(sanitizeText(habit), {
+        const currentPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+        currentPage.drawText(sanitizeText(habit), {
           x: margin,
           y: yPosition,
           size: 11,
@@ -7157,13 +7199,12 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
           color: COLORS.text,
         });
 
-        // Draw checkbox grid
-        for (let i = 0; i < Math.min(numDays, 10); i++) {
-          const x = margin + 200 + (i * cellWidth);
-          habitPage.drawRectangle({
-            x,
+        // Draw tracker boxes
+        for (let day = 0; day < numDays; day++) {
+          currentPage.drawRectangle({
+            x: margin + 200 + (day * cellWidth),
             y: yPosition - 5,
-            width: 20,
+            width: cellWidth - 2,
             height: 20,
             borderColor: COLORS.pink,
             borderWidth: 1,
@@ -7199,9 +7240,29 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
         yPosition -= 40;
 
         category.questions.forEach((question) => {
-          if (yPosition < margin + 100) return;
+          if (yPosition < margin + 100) {
+            const newPage = addPage();
+            yPosition = pageHeight - margin - 20;
+            newPage.drawText(sanitizeText(templates.goalSetting!.title), {
+              x: margin,
+              y: yPosition,
+              size: 28,
+              font: notoSans,
+              color: COLORS.darkPink,
+            });
+            yPosition -= 50;
+            newPage.drawText(sanitizeText(category.name), {
+              x: margin,
+              y: yPosition,
+              size: 20,
+              font: notoSans,
+              color: COLORS.darkPink,
+            });
+            yPosition -= 40;
+          }
 
-          goalPage.drawText(sanitizeText(question), {
+          const currentPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+          currentPage.drawText(sanitizeText(question), {
             x: margin,
             y: yPosition,
             size: 12,
@@ -7212,8 +7273,12 @@ export async function generateWorkbookPDF(product: ProductData): Promise<Uint8Ar
 
           // Add lines for writing
           for (let i = 0; i < 4; i++) {
-            if (yPosition < margin + 30) return;
-            goalPage.drawLine({
+            if (yPosition < margin + 30) {
+              const newPage = addPage();
+              yPosition = pageHeight - margin - 20;
+            }
+            const linePage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+            linePage.drawLine({
               start: { x: margin, y: yPosition },
               end: { x: pageWidth - margin, y: yPosition },
               thickness: 0.5,
