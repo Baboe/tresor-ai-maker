@@ -128,14 +128,35 @@ const ProductCard = ({
     }
   };
 
+  const handleDownloadCoverImage = () => {
+    // Convert data URL to blob and download
+    if (image.startsWith('data:image')) {
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `${generateFileName(title).replace('.pdf', '')}-cover.png`;
+      link.click();
+    } else {
+      // If it's a regular URL, open in new tab
+      window.open(image, '_blank');
+    }
+  };
+
   return (
     <Card className="overflow-hidden shadow-card hover:shadow-hover transition-all duration-300 bg-gradient-to-br from-card to-cream border-border">
-      <div className="aspect-[4/3] bg-beige relative overflow-hidden">
+      <div className="aspect-[4/3] bg-beige relative overflow-hidden group">
         <img
           src={image}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         />
+        <Button
+          onClick={handleDownloadCoverImage}
+          size="sm"
+          variant="secondary"
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          Download Cover
+        </Button>
       </div>
       
       <div className="p-6">

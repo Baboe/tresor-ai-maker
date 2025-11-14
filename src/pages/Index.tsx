@@ -114,7 +114,14 @@ const Index = () => {
                 price={product.price_range}
                 image={product.cover_image_url || "https://images.unsplash.com/photo-1455849318743-b2233052fcff?w=400"}
                 status={product.status}
-                benefits={product.benefits}
+                benefits={product.benefits as string[] | null}
+                tagline={product.tagline}
+                introduction={product.introduction}
+                pillars={product.pillars as any}
+                worksheets={product.worksheets as string[] | null}
+                bonus_assets={product.bonus_assets as string[] | null}
+                reflection_questions={product.reflection_questions as string[] | null}
+                next_steps={product.next_steps}
                 social_caption={product.social_caption}
               />
             ))}
