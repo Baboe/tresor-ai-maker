@@ -60,6 +60,17 @@ export const ProductGenerator = () => {
       
       const product = productData.product;
       
+      console.log('Generated product data:', product);
+      
+      // Ensure worksheets have default templates if not provided
+      const defaultWorksheets = product.worksheets && product.worksheets.length > 0 
+        ? product.worksheets 
+        : [
+            "Daily Planner Template",
+            "Habit Tracker Template", 
+            "Goal Setting Worksheet"
+          ];
+      
       // Step 2: Generate cover image
       toast({
         title: "Creating cover image...",
@@ -83,23 +94,27 @@ export const ProductGenerator = () => {
       }
       
       // Step 3: Save to database
-      const { error: dbError } = await supabase.from('products').insert({
-        title: product.title,
-        tagline: product.tagline,
-        description: product.description,
-        introduction: product.introduction,
-        benefits: product.benefits,
-        pillars: product.pillars,
-        worksheets: product.worksheets,
-        bonus_assets: product.bonus_assets,
-        reflection_questions: product.reflection_questions,
-        next_steps: product.next_steps,
-        price_range: product.price_range,
-        hashtags: product.hashtags,
-        social_caption: product.social_caption,
+      const productToInsert = {
+        title: product.title || 'Untitled Product',
+        tagline: product.tagline || product.title,
+        description: product.description || '',
+        introduction: product.introduction || product.description,
+        benefits: Array.isArray(product.benefits) ? product.benefits : [],
+        pillars: product.pillars || [],
+        worksheets: defaultWorksheets,
+        bonus_assets: Array.isArray(product.bonus_assets) ? product.bonus_assets : [],
+        reflection_questions: Array.isArray(product.reflection_questions) ? product.reflection_questions : [],
+        next_steps: product.next_steps || '',
+        price_range: product.price_range || '$27-$47',
+        hashtags: Array.isArray(product.hashtags) ? product.hashtags : [],
+        social_caption: product.social_caption || '',
         cover_image_url: imageData?.imageUrl || null,
         status: 'ready'
-      });
+      };
+      
+      console.log('Inserting product into database:', productToInsert);
+      
+      const { error: dbError } = await supabase.from('products').insert(productToInsert);
       
       if (dbError) throw dbError;
       
